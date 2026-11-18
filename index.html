@@ -1,0 +1,236 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BM — музыка и подкасты</title>
+  <meta name="description" content="BM: группы BM, музыка и подкасты">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%237c5cff'/%3E%3Ctext x='32' y='43' font-family='Arial' font-weight='900' font-size='30' fill='white' text-anchor='middle'%3EBM%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/style.css?v=19">
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <div class="logo">
+        <span class="logo-mark">BM</span>
+        <span class="logo-sub">музыка · подкасты</span>
+      </div>
+      <nav class="nav" id="nav">
+        <button data-route="home">
+          <svg viewBox="0 0 24 24"><path d="M3 11.5 12 4l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>
+          <span>Главная</span>
+        </button>
+        <button data-route="music">
+          <svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+          <span>Музыка</span>
+        </button>
+        <button data-route="bands">
+          <svg viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6.5 6.5 0 0 1 3.5 6"/></svg>
+          <span>Группы</span>
+        </button>
+        <button data-route="podcasts">
+          <svg viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v4M8 21h8"/></svg>
+          <span>Подкасты</span>
+        </button>
+        <button data-route="playlists">
+          <svg viewBox="0 0 24 24"><path d="M3 6h13M3 12h13M3 18h8"/><path d="M19 15v6M16 18h6"/></svg>
+          <span>Плейлисты</span>
+        </button>
+      </nav>
+      <div class="side-note">
+        <b>BM</b> — музыка и подкасты. Группы BM — собственные артисты BM.
+        <br><br>Вход — через аккаунт BOS.
+        <br><br>© 2026 BM. Группы BM, их песни и тексты принадлежат BM. Остальные записи принадлежат их правообладателям: NASA, Wikimedia Commons.
+      </div>
+    </aside>
+
+    <main class="main" id="main">
+      <header class="topbar">
+        <div class="mobile-logo">BM</div>
+        <label class="search">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg>
+          <input type="search" id="search" placeholder="Поиск: музыка, подкасты, плейлисты" autocomplete="off" aria-label="Поиск">
+        </label>
+        <button class="btn premium-btn" id="top-premium">BM Премиум</button>
+        <button class="account-btn" id="top-account" aria-label="Аккаунт BM"><span>Войти</span></button>
+      </header>
+      <div id="view"></div>
+    </main>
+  </div>
+
+  <footer class="player" id="player">
+    <div class="p-info">
+      <div class="cover sm" id="p-cover"><span class="cover-glyph">♪</span></div>
+      <div class="p-text">
+        <div class="p-title" id="p-title">Ничего не играет</div>
+        <div class="p-artist" id="p-artist">Выберите трек или подкаст</div>
+      </div>
+      <button class="icon-btn add-btn" id="b-lyrics" aria-label="Текст песни" title="Текст песни" hidden>
+        <svg viewBox="0 0 24 24"><path d="M5 4h11l3 3v13H5z"/><path d="M8 10h8M8 14h8M8 18h5"/></svg>
+      </button>
+      <button class="icon-btn add-btn" id="b-add" aria-label="Добавить в плейлист" title="Добавить в плейлист" hidden>
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/></svg>
+      </button>
+    </div>
+    <div class="p-center">
+      <div class="p-controls">
+        <button class="icon-btn" id="b-prev" aria-label="Предыдущий"></button>
+        <button class="play-btn" id="b-play" aria-label="Играть"></button>
+        <button class="icon-btn" id="b-next" aria-label="Следующий"></button>
+      </div>
+      <div class="p-seek">
+        <span class="t" id="t-cur">0:00</span>
+        <input type="range" id="seek" min="0" max="1000" value="0" aria-label="Позиция">
+        <span class="t" id="t-dur">0:00</span>
+      </div>
+    </div>
+    <div class="p-right">
+      <svg class="vol-ic" viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12"/></svg>
+      <input type="range" id="vol" min="0" max="100" value="80" aria-label="Громкость">
+    </div>
+  </footer>
+
+  <!-- Добавить в плейлист -->
+  <div class="modal-back" id="pick-modal" hidden>
+    <div class="modal">
+      <h2>Добавить в плейлист</h2>
+      <p class="muted" id="pick-item"></p>
+      <div class="pick-list" id="pick-list"></div>
+      <form class="pick-new" id="pick-new">
+        <input type="text" id="pick-name" maxlength="60" placeholder="Название нового плейлиста">
+        <button type="submit" class="btn primary">Создать</button>
+      </form>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Закрыть</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Текст песни -->
+  <div class="modal-back" id="lyrics-modal" hidden>
+    <div class="modal lyrics-modal">
+      <div>
+        <h2 id="ly-title"></h2>
+        <p class="muted" id="ly-band"></p>
+      </div>
+      <div class="ly-text" id="ly-text"></div>
+      <p class="copyright" id="ly-copy"></p>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Закрыть</button>
+        <button type="button" class="btn primary" id="ly-play">Слушать</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Меню входа через BOS (в стиле BOS) -->
+  <div class="modal-back" id="auth-modal" hidden data-mode="login">
+    <form class="modal bos-modal" id="auth-form" novalidate>
+      <div class="bos-head">
+        <svg class="bos-logo" viewBox="0 0 32 32" aria-hidden="true"><rect fill="#111" x="5" y="2" width="5" height="28" rx="2.5"/><circle fill="none" stroke="#111" stroke-width="5" cx="17" cy="20" r="8"/><circle fill="#2563eb" cx="17" cy="20" r="3"/></svg>
+        <div>
+          <h2>Вход с B ID</h2>
+          <p>Один идентификатор для всего в BOS — теперь и для BM.</p>
+        </div>
+      </div>
+
+      <div class="bos-segs" id="auth-segs" role="tablist">
+        <button type="button" data-mode="login" class="active">Войти</button>
+        <button type="button" data-mode="create">Создать B ID</button>
+      </div>
+
+      <div id="auth-login">
+        <label class="bos-field">
+          <span>Ваш B ID</span>
+          <div class="bos-input id"><input type="text" id="auth-id" maxlength="40" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="yourname"><span>@bid</span></div>
+        </label>
+        <label class="bos-field" id="auth-pass-wrap">
+          <span>Пароль BOS</span>
+          <div class="bos-input"><input type="password" id="auth-password" maxlength="100" autocomplete="current-password"></div>
+        </label>
+        <p class="bos-note" id="auth-login-note"></p>
+      </div>
+
+      <div id="auth-create" hidden>
+        <div class="bos-busy" id="auth-busy" hidden>
+          <b>На этом устройстве уже есть аккаунт BOS</b>
+          <span id="auth-busy-name"></span>
+          <p>BOS работает с одним аккаунтом на устройстве. Войдите в него.</p>
+          <button type="button" class="bos-btn" id="auth-busy-login">Войти в этот аккаунт</button>
+        </div>
+        <div id="auth-create-fields">
+          <label class="bos-field">
+            <span>Как вас зовут</span>
+            <div class="bos-input"><input type="text" id="auth-name" maxlength="40" autocomplete="given-name"></div>
+          </label>
+          <label class="bos-field">
+            <span>Придумайте B ID</span>
+            <div class="bos-input id"><input type="text" id="auth-new-id" maxlength="40" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="yourname"><span>@bid</span></div>
+            <p class="bos-note" id="auth-new-status"></p>
+          </label>
+          <label class="bos-field">
+            <span>Пароль BOS <small>(необязательно)</small></span>
+            <div class="bos-input"><input type="password" id="auth-new-pass" maxlength="100" autocomplete="new-password"></div>
+          </label>
+          <label class="bos-field">
+            <span>Повторите пароль</span>
+            <div class="bos-input"><input type="password" id="auth-new-pass2" maxlength="100" autocomplete="new-password"></div>
+          </label>
+        </div>
+      </div>
+
+      <p class="bos-note err" id="auth-error" role="alert"></p>
+      <p class="bos-note" id="auth-offsite" hidden>BM открыт не на vier4.github.io — настоящая BOS этот аккаунт не увидит.</p>
+
+      <div class="bos-actions">
+        <a class="bos-link" href="https://vier4.github.io/BOS/" target="_blank" rel="noopener">Открыть BOS</a>
+        <span class="spacer"></span>
+        <button type="button" class="bos-btn ghost" data-close>Отмена</button>
+        <button type="submit" class="bos-btn primary" id="auth-submit">Войти</button>
+      </div>
+    </form>
+  </div>
+
+  <!-- Нужна подписка -->
+  <div class="modal-back" id="paywall-modal" hidden>
+    <div class="modal paywall">
+      <div class="pw-icon">🔒</div>
+      <h2 id="pw-title">Доступно в BM Премиум</h2>
+      <div class="badge free" style="align-self:center">Бесплатно</div>
+      <p class="muted" id="pw-text"></p>
+      <ul class="perks small">
+        <li>🎸 Все песни групп BM</li>
+        <li>🎙 Все подкасты</li>
+        <li>📝 Тексты песен</li>
+      </ul>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" id="pw-login">Войти через BOS</button>
+        <button type="button" class="btn primary" id="pw-subscribe">Оформить бесплатно</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Название плейлиста -->
+  <div class="modal-back" id="name-modal" hidden>
+    <form class="modal" id="name-form">
+      <h2 id="name-heading">Новый плейлист</h2>
+      <label class="field">
+        <span>Название</span>
+        <input type="text" id="name-input" maxlength="60" required>
+      </label>
+      <div class="modal-actions">
+        <button type="button" class="btn ghost" data-close>Отмена</button>
+        <button type="submit" class="btn primary">Сохранить</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="toast" id="toast" role="status"></div>
+
+  <script src="js/library.js?v=19"></script>
+  <script src="js/bands-data.js?v=19"></script>
+  <script src="js/ai-songs-data.js?v=19"></script>
+  <script src="js/catalog-data.js?v=19"></script>
+  <script src="js/podcasts-data.js?v=19"></script>
+  <script src="js/app.js?v=19"></script>
+</body>
+</html>
