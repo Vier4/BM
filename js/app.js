@@ -1062,7 +1062,8 @@
     acc.innerHTML = u ? `<span class="avatar">${esc(initials(u.name))}</span><span class="hide-sm">${esc(u.name.split(' ')[0])}</span>` : '<span>Войти<span class="hide-sm"> через BOS</span></span>';
     acc.classList.toggle('logged', !!u);
     const pb = $('#top-premium');
-    pb.textContent = prem ? '✓ Премиум' : 'BM Премиум';
+    pb.innerHTML = prem ? '✓<span class="hide-sm"> Премиум</span>' : '★<span class="hide-sm"> BM Премиум</span>';
+    pb.setAttribute('aria-label', prem ? 'BM Премиум подключён' : 'BM Премиум');
     pb.classList.toggle('active', prem);
   }
 
