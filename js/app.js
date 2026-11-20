@@ -122,7 +122,7 @@
     ...b,
     songs: b.songs.map(s => ({
       kind: 'band', id: `bm-${b.id}-${s.id}`, title: s.title, artist: b.name, band: b.id,
-      src: `music/bands/${b.id}/${s.id}.mp3`, lyrics: s.lyrics, license: 'bm', hue: b.hue, glyph: b.glyph, genre: 'Группы BM'
+      src: `music/bands/${b.id}/${s.id}.mp3`, lyrics: s.lyrics, instrumental: !!s.instrumental, license: 'bm', hue: b.hue, glyph: b.glyph, genre: 'Группы BM'
     }))
   }));
   const bandSongs = bands.flatMap(b => b.songs);
@@ -262,8 +262,7 @@
     stopCurrent();
     state.item = null;
     updatePlayerInfo();
-    if (item.kind === 'band') { songStatus[item.id] = 'missing'; showLyrics(item); toast('Эта песня ещё записывается. Пока можно прочитать текст.'); markCurrent(); }
-    else if (item.id === 'user-song') toast('Файла песни пока нет. Положите его в папку music с именем my-song.mp3.');
+    if (item.id === 'user-song') toast('Файла песни пока нет. Положите его в папку music с именем my-song.mp3.');
     else if (item.kind === 'file') toast('Файл этого трека больше не хранится в BM.');
     else toast('Не удалось загрузить запись. Проверьте интернет и попробуйте ещё раз.');
   }
@@ -883,7 +882,7 @@
     lyricsItem = it;
     const b = bands.find(x => x.id === it.band);
     $('#ly-title').textContent = it.title;
-    $('#ly-band').textContent = (b ? `${b.name} · ${b.genre}` : it.artist) + (isMissing(it) ? ' · песня скоро выйдет' : '');
+    $('#ly-band').textContent = (b ? `${b.name} · ${b.genre}` : it.artist) + (it.instrumental ? ' · инструментальная версия' : '');
     $('#ly-text').innerHTML = lyricsHTML(it.lyrics);
     $('#ly-copy').textContent = `© ${b ? b.year : new Date().getFullYear()} BM. Текст песни принадлежит BM.`;
     $('#ly-play').hidden = isMissing(it);

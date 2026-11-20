@@ -3,6 +3,8 @@
  *
  * Аудио каждой песни лежит в music/bands/<id группы>/<id песни>.mp3.
  * Пока файла нет, в приложении видна пометка «скоро» и можно прочитать текст.
+ * Сейчас у всех песен инструментальные версии (instrumental: true), их записывает
+ * tools/make_band_songs.py. Версия с вокалом заменяет mp3, а флаг instrumental убирается.
  * Как записать песни в Suno — music/bands/КАК_ЗАПИСАТЬ_ПЕСНИ.md
  * (создаётся командой: node tools/suno_guide.js).
  *
@@ -25,6 +27,7 @@ window.BM_BANDS = [
       {
         id: '01-poslednij-rejs',
         title: 'Последний рейс',
+        instrumental: true,
         style: '118 bpm, wide reverb guitars, anthemic chorus',
         lyrics: `[Verse 1]
 Город гасит окна по одному,
@@ -72,6 +75,7 @@ window.BM_BANDS = [
       {
         id: '02-severnoe-leto',
         title: 'Северное лето',
+        instrumental: true,
         style: '126 bpm, upbeat, bright guitars, handclaps, summer feeling',
         lyrics: `[Verse 1]
 У нас лето — ровно две недели,
@@ -116,6 +120,7 @@ window.BM_BANDS = [
       {
         id: '03-batarejki',
         title: 'Батарейки',
+        instrumental: true,
         style: '104 bpm, mid-tempo, intimate verses, big chorus',
         lyrics: `[Verse 1]
 У меня садятся батарейки:
@@ -169,6 +174,7 @@ window.BM_BANDS = [
       {
         id: '01-neonovye-kity',
         title: 'Неоновые киты',
+        instrumental: true,
         style: '84 bpm, lush pads, whale-like synth sounds, floating atmosphere',
         lyrics: `[Verse 1]
 Над крышами плывут неоновые киты,
@@ -205,6 +211,7 @@ window.BM_BANDS = [
       {
         id: '02-tishe-vody',
         title: 'Тише воды',
+        instrumental: true,
         style: '76 bpm, whispery intimate vocals, soft piano and synth, gentle build-up',
         lyrics: `[Verse 1]
 Я тише воды, я ниже травы,
@@ -241,6 +248,7 @@ window.BM_BANDS = [
       {
         id: '03-sputnik',
         title: 'Спутник',
+        instrumental: true,
         style: '96 bpm, playful synth-pop, retro bleeps, warm bass',
         lyrics: `[Verse 1]
 Я маленький спутник на дальней орбите,
@@ -290,6 +298,7 @@ window.BM_BANDS = [
       {
         id: '01-ne-spat',
         title: 'Не спать!',
+        instrumental: true,
         style: '172 bpm, explosive, count-in intro, crowd shouting chorus',
         lyrics: `[Intro]
 Раз, два, три, четыре!
@@ -331,6 +340,7 @@ window.BM_BANDS = [
       {
         id: '02-dvor-kolodec',
         title: 'Двор-колодец',
+        instrumental: true,
         style: '150 bpm, singalong punk anthem, bouncy rhythm',
         lyrics: `[Verse 1]
 В нашем дворе-колодце не видно неба,
@@ -365,6 +375,7 @@ window.BM_BANDS = [
       {
         id: '03-razbityj-skejt',
         title: 'Разбитый скейт',
+        instrumental: true,
         style: '164 bpm, skate punk, fast palm-muted riffs, fun and cheeky',
         lyrics: `[Verse 1]
 Мой скейт разбит, на коленях зелёнка,
@@ -412,6 +423,7 @@ window.BM_BANDS = [
       {
         id: '01-chaj-s-chabrecom',
         title: 'Чай с чабрецом',
+        instrumental: true,
         style: '92 bpm, gentle waltz feel, female lead vocal with male harmonies',
         lyrics: `[Verse 1]
 Заварю тебе чай с чабрецом,
@@ -443,6 +455,7 @@ window.BM_BANDS = [
       {
         id: '02-pismo-v-derevnyu',
         title: 'Письмо в деревню',
+        instrumental: true,
         style: '84 bpm, heartfelt male lead vocal, accordion solo, nostalgic',
         lyrics: `[Verse 1]
 Здравствуй, мама, у меня всё хорошо,
@@ -474,6 +487,7 @@ window.BM_BANDS = [
       {
         id: '03-osennij-vokzal',
         title: 'Осенний вокзал',
+        instrumental: true,
         style: '100 bpm, male and female duet, violin melody, bittersweet',
         lyrics: `[Verse 1]
 Осенний вокзал, листья на рельсах,
