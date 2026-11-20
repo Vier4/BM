@@ -128,6 +128,8 @@
   const bandSongs = bands.flatMap(b => b.songs);
   const songStatus = {}; // id песни → 'ready' | 'missing' | 'unknown'
   const isMissing = it => it.kind === 'band' && songStatus[it.id] === 'missing';
+  // Песня, которую нельзя включить: запись группы ещё не вышла или файла «вашего трека» нет
+  const notReady = it => isMissing(it) || (it.id === 'user-song' && !state.userSongSaved);
   // Без подписки BM Премиум закрыты песни групп BM и подкасты
   const isPremiumContent = it => !!it && (it.kind === 'band' || it.license === 'nasa');
   const isLocked = it => isPremiumContent(it) && !isPremium();
@@ -148,7 +150,7 @@
     genre: 'all', epLimit: 50
   };
 
-  const allMusic = () => [L.userSong, ...bandSongs, ...aiSongs, ...catalog];
+  const allMusic = () => [...(state.userSongSaved ? [L.userSong] : []), ...bandSongs, ...aiSongs, ...catalog];
   const allEpisodes = () => shows.flatMap(s => s.episodes);
   const glyph = it => it.glyph || (it.genre ? (GENRE_GLYPH[it.genre] || '♫') : '♪');
   const licenseOf = it => isLocked(it) ? { cls: 'lock', label: '🔒 Премиум' }
@@ -286,7 +288,7 @@
   function next(auto) {
     if (!state.queue.length) return;
     let i = state.index + 1;
-    while (i < state.queue.length && isLocked(state.queue[i])) i++; // закрытое без подписки пропускаем
+    while (i < state.queue.length && (isLocked(state.queue[i]) || notReady(state.queue[i]))) i++; // закрытое и невышедшее пропускаем
     if (i >= state.queue.length) {
       if (auto) { stopCurrent(); state.item = null; updatePlayerInfo(); return; }
       playFrom(state.queue, 0, true);
@@ -482,14 +484,17 @@
     `<div class="section-head"><div><h2>${title}</h2>${sub ? `<div class="muted">${sub}</div>` : ''}</div>${actions}</div>`;
 
   function hero() {
-    const s = L.userSong;
+    // Свой трек показываем, только когда его файл есть — иначе кнопка «Слушать» вела бы в никуда
+    const own = state.userSongSaved;
+    const s = own ? L.userSong : aiSongs[0];
+    if (!s) return '';
     const k = R([s]);
     return `<div class="hero">
       ${coverHTML(s)}
       <div>
-        <div class="hero-kicker">Ваш трек</div>
+        <div class="hero-kicker">${own ? 'Ваш трек' : 'Песня от ИИ'}</div>
         <h1>${esc(s.title)}</h1>
-        <p>Ваша собственная песня.</p>
+        <p>${own ? 'Ваша собственная песня.' : esc(s.artist || 'С живым вокалом от нейросети.')}</p>
         <div class="actions">
           <button class="btn primary" data-play="${k}">${ICON.play} Слушать</button>
         </div>
@@ -817,7 +822,13 @@
     const unl = t.closest('[data-unlist]');
     if (unl) { unlist(+unl.dataset.unlist); return; }
     const pl = t.closest('[data-play]');
-    if (pl) { playFrom(reg[+pl.dataset.play], 0); return; }
+    if (pl) {
+      // Начинаем с первой песни, которую можно включить, а не с той, что ещё не готова
+      const q = reg[+pl.dataset.play] || [];
+      const first = q.findIndex(it => !notReady(it));
+      playFrom(q, first < 0 ? 0 : first);
+      return;
+    }
     const gen = t.closest('[data-genre]');
     if (gen) { state.genre = gen.dataset.genre; render(); return; }
     const gg = t.closest('[data-go]');
