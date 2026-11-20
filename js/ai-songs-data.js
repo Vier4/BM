@@ -86,7 +86,8 @@ window.BM_AI_SONGS = [
   "ogg": "https://upload.wikimedia.org/wikipedia/commons/transcoded/e/e4/WikiWarriors_%28AI-generated_music_with_Wikipedia_lyrics%29.mp3/WikiWarriors_%28AI-generated_music_with_Wikipedia_lyrics%29.mp3.ogg",
   "duration": 167,
   "hue": 180,
-  "page": "https://commons.wikimedia.org/wiki/File%3AWikiWarriors_%28AI-generated_music_with_Wikipedia_lyrics%29.mp3"
+  "page": "https://commons.wikimedia.org/wiki/File%3AWikiWarriors_%28AI-generated_music_with_Wikipedia_lyrics%29.mp3",
+  "explicit": true
  },
  {
   "id": "ai153911251",

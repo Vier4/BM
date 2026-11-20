@@ -29,6 +29,9 @@ SONGS = [
     ("Pulikkottum Panamthengem.ogg", "Pulikkottum Panamthengem", "малаялам", "фолк", 90),
 ]
 
+# Песни с пометкой E (Explicit): в BM рядом с названием значок E, их можно запретить в аккаунте
+EXPLICIT = {"WikiWarriors"}
+
 
 def get(params):
     q = urllib.parse.urlencode({**params, "format": "json", "formatversion": 2})
@@ -72,6 +75,8 @@ def main():
             "src": vi["url"].split("?")[0], "ogg": ogg, "duration": round(vi.get("duration") or 0), "hue": hue,
             "page": "https://commons.wikimedia.org/wiki/" + urllib.parse.quote(p["title"].replace(" ", "_")),
         })
+        if title in EXPLICIT:
+            out[-1]["explicit"] = True
         print(f"ok  {title} ({lang}, {out[-1]['duration']} с, {lic})")
     path = os.path.join(os.path.dirname(__file__), "..", "js", "ai-songs-data.js")
     with open(path, "w", encoding="utf-8") as f:
