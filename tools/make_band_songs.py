@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """
-Записывает инструментальные версии песен групп BM.
+Записывает инструментальные версии песен групп BM и песен на стихи.
 
 Каждая группа звучит своими инструментами, у каждой песни своя тональность,
 темп, аккорды и мелодия. Куплеты, припевы и бриджи берутся из текста песни
 в js/bands-data.js, поэтому мелодия идёт ровно по строкам текста.
 
-Готовые mp3 кладутся в music/bands/<группа>/<песня>.mp3.
+Готовые mp3 кладутся в music/bands/<группа>/<песня>.mp3,
+песни на стихи (js/poem-songs-data.js) — в music/poems/<песня>.mp3.
+
+Песни на стихи поёт голос (tools/bm_voice.py): для них нужны ещё macOS с голосом
+Milena и pyworld (pip install pyworld).
 
 Нужны Python 3, numpy, scipy и lameenc (pip install numpy scipy lameenc), а ещё node.
 Запуск:  python3 tools/make_band_songs.py            — все песни
@@ -17,6 +21,8 @@ import math
 import os
 import subprocess
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # bm_voice.py лежит рядом
 
 import lameenc
 import numpy as np
@@ -56,6 +62,15 @@ SONGS = {
                                 verse='Am Dm G C', chorus='F G C E', bridge='Dm Am E Am'),
     '03-osennij-vokzal': dict(style='folk', key=2, mode='minor', bpm=100, seed=43, lead='duet',
                               verse='Dm Bb F C', chorus='Gm Dm A Dm', bridge='Bb C F A'),
+    # Песни на стихи
+    '01-uzh-nebo-osenyu-dyshalo': dict(style='folk', key=9, mode='minor', bpm=96, seed=51, meter=3, bpl=4, chord_bars=2,
+                                       verse='Am Dm G C', chorus='F Dm E Am', lead='violin',
+                                       vocal=dict(meter='iamb-waltz', center=66, span=6)),
+    # куплеты — тёмная баллада с пианино, с припева «Петербург!» вступает рок
+    '02-ya-vernulsya-v-moj-gorod': dict(style='dream', key=2, mode='minor', bpm=84, seed=52, piano=True,
+                                        rock_chorus=True,
+                                        verse='Dm Gm C F', chorus='Bb C Dm A',
+                                        vocal=dict(meter='anapest', center=64, span=6)),
 }
 
 STYLES = {
@@ -67,15 +82,17 @@ STYLES = {
 
 # Громкость дорожек в дБ относительно мелодии, панорама, доля в реверберации
 MIXES = {
-    'indie': dict(lead=(0, 0, .3), lead2=(-8, -.2, .4), kick=(-3, 0, .03), snare=(-5, 0, .25), hat=(-15, .3, .05),
+    'indie': dict(voice=(1, 0, .25), voice2=(-6, .35, .35), pgL=(-5, -.75, .08), pgR=(-5, .75, .08),
+                  lead=(0, 0, .3), lead2=(-8, -.2, .4), kick=(-3, 0, .03), snare=(-5, 0, .25), hat=(-15, .3, .05),
                   cym=(-15, -.25, .15), clap=(-11, 0, .3), bass=(-4, 0, 0), gtr1=(-6, .5, .35), gtr2=(-8, -.55, .35)),
-    'dream': dict(lead=(0, 0, .45), lead2=(-10, .1, .6), kick=(-5, 0, .05), snare=(-8, 0, .5), hat=(-18, .25, .2),
+    'dream': dict(voice=(1, 0, .4), pgL=(-1, -.75, .06), pgR=(-1, .75, .06), cym=(-15, -.25, .15),
+                  lead=(0, 0, .45), lead2=(-10, .1, .6), kick=(-5, 0, .05), snare=(-8, 0, .5), hat=(-18, .25, .2),
                   bass=(-4, 0, .05), pad=(-7, 0, .5), bells=(-12, .35, .6), piano=(-5, -.15, .4),
                   bleeps=(-15, -.4, .4), whale=(-7, -.2, .7)),
     'punk': dict(lead=(0, 0, .15), lead2=(-5, 0, .15), kick=(-2, 0, 0), snare=(-4, 0, .12), hat=(-14, .3, .03),
                  cym=(-13, -.25, .1), bass=(-4, 0, 0), pgL=(-4, -.75, .08), pgR=(-4, .75, .08), sticks=(-8, 0, .1),
                  toms=(-6, .15, .1)),
-    'folk': dict(lead=(0, .05, .3), lead2=(-5, -.25, .3), kick=(-9, 0, .1), tamb=(-15, .4, .2), shaker=(-19, -.35, .1),
+    'folk': dict(voice=(1, 0, .28), lead=(0, .05, .3), lead2=(-5, -.25, .3), kick=(-9, 0, .1), tamb=(-15, .4, .2), shaker=(-19, -.35, .1),
                  bass=(-5, 0, .05), agtr=(-5, -.35, .25), accord=(-9, .3, .3)),
 }
 
@@ -395,6 +412,16 @@ def master(mix, style, rng):
 
 
 def effects(name, x, style):
+    if name in ('voice', 'voice2'):
+        x = highpass(x, 110)
+        x = np.tanh(x * 1.6) / np.tanh(1.6)  # мягкая компрессия
+        if style == 'dream':
+            out = x.copy()
+            d = int(0.36 * SR)
+            for k, g in ((1, .22), (2, .1)):
+                out[d * k:] += g * lowpass(x[:-d * k], 3000)
+            return out
+        return x
     if name == 'bass':
         return lowpass(x, 700 if style != 'punk' else 1100)
     if name in ('pgL', 'pgR'):
@@ -498,7 +525,8 @@ def build_plan(spec, secs):
     if not has_intro:
         plan.append(dict(role='intro', bars=4 if beats == 4 else 8))
     choruses = 0
-    for name, lines in secs:
+    for name, text in secs:
+        lines = len(text)
         low = name.lower()
         role = ('intro' if low.startswith('intro') else 'pre' if low.startswith('pre') else
                 'chorus' if low.startswith('chorus') else 'bridge' if low.startswith('bridge') else
@@ -506,7 +534,7 @@ def build_plan(spec, secs):
         bars = lines * bpl
         if role == 'intro':
             bars = max(4, bars)
-        plan.append(dict(role=role, bars=bars, lines=lines, sung=role != 'intro', verse_no=low))
+        plan.append(dict(role=role, bars=bars, lines=lines, text=text, sung=role != 'intro', verse_no=low))
         if role == 'chorus':
             choruses += 1
             if choruses == 2:
@@ -550,6 +578,14 @@ def render_song(song_id, spec, secs):
         v = kit[name][int(rng.integers(len(kit[name])))]
         mix.add(track, at, v, vel * rng.uniform(0.9, 1.0))
 
+    bar_chords = []  # аккорд каждого такта песни
+    for sec in plan:
+        chords = prog(spec, sec['role'])
+        bar_chords += [chords[(b // cb) % len(chords)] for b in range(sec['bars'])]
+
+    def chord_at(sec_time):
+        return bar_chords[min(len(bar_chords) - 1, int(sec_time / bar + 1e-6))]
+
     t = 0.0
     first_verse_done = False
     for sec_i, sec in enumerate(plan):
@@ -568,10 +604,14 @@ def render_song(song_id, spec, secs):
                        first_verse=first_verse, beats=beats, spb=spb, slot=slot, bar=bar, cb=cb)
             if role == 'end':
                 final_hit(mix, hit, spec, ctx, rng)
+            elif spec.get('rock_chorus') and role in ('chorus', 'solo', 'outro'):
+                bar_punk(mix, hit, spec, ctx, rng)  # припев — рок
             else:
                 globals()['bar_' + style](mix, hit, spec, ctx, rng)
-        # мелодия
-        if sec.get('sung') or role in ('solo',) or (role == 'intro' and style == 'folk'):
+        # мелодия: голос поёт строки, инструмент играет вступление и проигрыш
+        if spec.get('vocal') and sec.get('sung') and sec.get('text'):
+            render_vocal(mix, spec, sec, t, bar, slot, bpl, scale, chord_at)
+        elif sec.get('sung') or role in ('solo',) or (role == 'intro' and style == 'folk'):
             render_melody(mix, spec, st, sec, chords, t, bar, slot, spb, bpl, cb, scale, rng)
         t += nbars * bar
     out = master(mix, style, rng)
@@ -613,6 +653,84 @@ def render_melody(mix, spec, st, sec, chords, t, bar, slot, spb, bpl, cb, scale,
             strong = s % spb == 0
             vel = (0.95 if strong else 0.8) * INTENSITY[role]
             play_lead(mix, spec, role, m, at, dur, vel, scale, rng, li)
+
+
+def vocal_rhythm(meter, n):
+    """Ритм строки: [(восьмая от начала строки, длительность в восьмых, ударный слог?)]."""
+    out = []
+    if meter == 'iamb-waltz':
+        # вальс, ямб: затакт на третью долю, ударные слоги — на первую долю следующих тактов
+        out.append((4, 2, False))
+        k, f = 1, 1
+        while k < n:
+            out.append((6 * f, 4, True))
+            k += 1
+            if k < n:
+                out.append((6 * f + 4, 2, False))
+                k += 1
+            f += 1
+        if out[-1][0] >= 28:  # женское окончание: два последних слога делят такт
+            s0 = out[-2][0]
+            out[-2] = (s0, 2, True)
+            out[-1] = (s0 + 2, 2, False)
+    else:
+        # анапест: та-та-ТАМ, одна стопа — четыре восьмых
+        for k in range(n):
+            f, pos = divmod(k, 3)
+            out.append((4 * f + pos, (1, 1, 2)[pos], pos == 2))
+        s0, d, st_ = out[-1]
+        out[-1] = (s0, d * 0.8, st_)  # вдох перед следующей строкой
+    return out
+
+
+def sung_pitches(seed, rhythm_, chord_for, scale, center, span):
+    """Высота каждого слога: ударные — на звуках аккорда, безударные — шагами по ладу."""
+    rng = np.random.default_rng(seed)
+    p = center - 2
+    out = []
+    n = len(rhythm_)
+    for j, (s, d, stressed) in enumerate(rhythm_):
+        pos = j / max(1, n - 1)
+        target = center + span * math.sin(math.pi * pos) * 0.8 - (3 if pos > 0.85 else 0)
+        pc, ints = chord_for(s)
+        tones = {(pc + i) % 12 for i in ints}
+        last = j == n - 1
+        if stressed or last:
+            cand = [m for m in range(57, 78) if m % 12 in tones and abs(m - p) <= 7]
+        else:
+            cand = [m for m in range(57, 78) if m % 12 in scale and abs(m - p) <= 3]
+        if not cand:
+            cand = [min(77, max(57, p))]
+        aim = 0.55 * p + 0.45 * target
+        score = [abs(m - aim) + rng.random() * 2.0 + (0.8 if m == p else 0)
+                 - (1.5 if last and (m - pc) % 12 == 0 else 0) for m in cand]
+        p = cand[int(np.argmin(score))]
+        out.append(p)
+    return out
+
+
+def render_vocal(mix, spec, sec, t, bar, slot, bpl, scale, chord_at):
+    import bm_voice
+    v = spec['vocal']
+    role = sec['role']
+    center = v['center'] + (v.get('chorus_up', 3) if role in ('chorus', 'outro') else 0)
+    for li, text in enumerate(sec['text']):
+        lt = t + li * bpl * bar
+        n = bm_voice.syllables(text)
+        if n == 0:
+            continue
+        rh = vocal_rhythm(v['meter'], n)
+        # в припеве-«крючке» нечётные строки поются одинаково, чётные — тоже
+        hook = v.get('hook') and role == 'chorus'
+        seed = spec['seed'] * 1000 + hash_role(role) * 10 + (li % 2 if hook else li % 4)
+        pitches = sung_pitches(seed, rh, lambda s: chord_at(lt + s * slot), scale, center, v['span'])
+        notes = [(s * slot, d * slot, m) for (s, d, _), m in zip(rh, pitches)]
+        audio = bm_voice.sing_line(text, notes)
+        vel = 0.85 if role == 'verse' else 1.0
+        mix.add('voice', lt, audio, vel)
+        if v.get('harmony') and role == 'chorus':  # второй голос терцией выше
+            harm = [(t0, d, third_above(m, scale)) for t0, d, m in notes]
+            mix.add('voice2', lt, bm_voice.sing_line(text, harm), 0.6)
 
 
 def hash_role(r):
@@ -859,6 +977,8 @@ def final_hit(mix, hit, spec, c, rng):
     hit('kick', 'kick', t0, 1.0)
     if 'cym' in MIXES[style]:
         hit('cym', 'crash', t0, 1.0)
+    if style == 'punk' or spec.get('rock_chorus'):
+        style = 'punk'  # рок-концовка: последний аккорд на перегруженных гитарах
     if style == 'indie':
         strum(mix, 'gtr2', ch, t0, 0.6, ring, rng, lo=45)
         mix.add('bass', t0, pluck(bass_note(ch), ring, rng, bright=.05, decay=1.5), 1.0)
@@ -924,35 +1044,53 @@ def load_bands():
 
 
 def sections(lyrics):
+    """Разделы песни: [(название, [строки])]. Пустой раздел повторяет одноимённый."""
     secs, known = [], {}
     cur = None
     for raw in lyrics.split('\n'):
         line = raw.strip()
         if line.startswith('[') and line.endswith(']'):
-            cur = [line[1:-1], 0]
+            cur = [line[1:-1], []]
             secs.append(cur)
         elif line and cur is not None:
-            cur[1] += 1
+            cur[1].append(line)
     for s in secs:
         if s[1]:
             known[s[0]] = s[1]
         else:
-            s[1] = known.get(s[0]) or known.get('Chorus') or 4
+            s[1] = list(known.get(s[0]) or known.get('Chorus') or ['…'] * 4)
     return [tuple(s) for s in secs]
+
+
+def load_poems():
+    js = r'''
+    global.window = {}; require(process.argv[1]);
+    console.log(JSON.stringify(window.BM_POEM_SONGS.songs));
+    '''
+    out = subprocess.check_output(['node', '-e', js, os.path.join(ROOT, 'js', 'poem-songs-data.js')])
+    return json.loads(out)
+
+
+def jobs():
+    for band in load_bands():
+        for song in band['songs']:
+            yield (os.path.join('music', 'bands', band['id']), song, band['name'], band['genre'])
+    for song in load_poems():
+        yield (os.path.join('music', 'poems'), song, 'Песни на стихи', 'Песни на стихи')
 
 
 def main():
     only = set(sys.argv[1:])
-    for band in load_bands():
-        for song in band['songs']:
-            if only and song['id'] not in only:
-                continue
-            spec = SONGS[song['id']]
-            audio, length = render_song(song['id'], spec, sections(song['lyrics']))
-            path = os.path.join(ROOT, 'music', 'bands', band['id'], song['id'] + '.mp3')
-            write_mp3(path, audio, song['title'], band['name'], band['genre'])
-            print(f"{band['name']} — {song['title']}: {int(length // 60)}:{int(length % 60):02d}, "
-                  f"{os.path.getsize(path) / 1e6:.1f} МБ")
+    for folder, song, artist, genre in jobs():
+        if only and song['id'] not in only:
+            continue
+        spec = SONGS[song['id']]
+        audio, length = render_song(song['id'], spec, sections(song['lyrics']))
+        os.makedirs(os.path.join(ROOT, folder), exist_ok=True)
+        path = os.path.join(ROOT, folder, song['id'] + '.mp3')
+        write_mp3(path, audio, song['title'], artist, genre)
+        print(f"{artist} — {song['title']}: {int(length // 60)}:{int(length % 60):02d}, "
+              f"{os.path.getsize(path) / 1e6:.1f} МБ")
 
 
 if __name__ == '__main__':

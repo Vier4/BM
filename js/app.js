@@ -126,6 +126,16 @@
     }))
   }));
   const bandSongs = bands.flatMap(b => b.songs);
+  // Песни на стихи: музыка BM, стихи русских поэтов. Открыты всем, без подписки
+  const POEMS = window.BM_POEM_SONGS || { songs: [] };
+  const poemSongs = POEMS.songs.map(s => ({
+    kind: 'poem', id: `poem-${s.id}`, title: s.title, artist: 'Песни на стихи', poet: s.poet, source: s.source,
+    src: `music/poems/${s.id}.mp3${s.v ? '?v=' + s.v : ''}`, lyrics: s.lyrics, instrumental: !!s.instrumental, explicit: !!s.explicit,
+    license: 'bm', hue: s.hue, glyph: '✒', genre: 'Песни на стихи'
+  }));
+  // Плейлисты BM: есть у всех, их нельзя переименовать или удалить
+  const builtinPlaylists = POEMS.playlist && poemSongs.length ? [{ ...POEMS.playlist, builtin: true, items: poemSongs }] : [];
+  const findPlaylist = id => builtinPlaylists.find(x => x.id === id) || state.playlists.find(x => x.id === id);
   const songStatus = {}; // id песни → 'ready' | 'missing' | 'unknown'
   const isMissing = it => it.kind === 'band' && songStatus[it.id] === 'missing';
   // Песня, которую нельзя включить: запись группы ещё не вышла или файла «вашего трека» нет
@@ -154,7 +164,7 @@
   // Пометка E (Explicit): в песне есть мат или грубые слова
   const isBlocked = it => !!(it && it.explicit && state.noExplicit);
   const eBadge = it => it && it.explicit ? '<span class="e-badge" title="Explicit: в песне есть грубые слова" aria-label="Explicit">E</span>' : '';
-  const allMusic = () => [...(state.userSongSaved ? [L.userSong] : []), ...bandSongs, ...aiSongs, ...catalog];
+  const allMusic = () => [...(state.userSongSaved ? [L.userSong] : []), ...bandSongs, ...poemSongs, ...aiSongs, ...catalog];
   const allEpisodes = () => shows.flatMap(s => s.episodes);
   const glyph = it => it.glyph || (it.genre ? (GENRE_GLYPH[it.genre] || '♫') : '♪');
   const licenseOf = it => isLocked(it) ? { cls: 'lock', label: '🔒 Премиум' }
@@ -218,6 +228,7 @@
 
   async function createSource(item) {
     if (item.kind === 'band') return isMissing(item) ? null : new FileSource(item, item.src);
+    if (item.kind === 'poem') return new FileSource(item, item.src);
     if (item.kind === 'stream') {
       const url = streamUrl(item);
       return url ? new FileSource(item, url) : 'format';
@@ -449,7 +460,7 @@
     const imgs = p.items.slice(0, 4);
     return imgs.length >= 4
       ? `<div class="cover collage ${size}">${imgs.map(it => coverHTML(it, 'tile')).join('')}</div>`
-      : `<div class="cover ${size}" style="background:linear-gradient(135deg,#7c5cff,#ff5c8a)"><span class="cover-glyph">≡</span></div>`;
+      : `<div class="cover ${size}" style="background:linear-gradient(135deg,#7c5cff,#ff5c8a)"><span class="cover-glyph">${esc(p.glyph || '≡')}</span></div>`;
   }
 
   function playlistCard(p) {
@@ -457,7 +468,7 @@
     return `<div class="card" data-pl="${esc(p.id)}">
       <div class="card-cover">${plCover(p)}</div>
       <div class="card-title">${esc(p.name)}</div>
-      <div class="card-sub">${n} ${plural(n, 'трек', 'трека', 'треков')}</div>
+      <div class="card-sub">${p.builtin ? 'BM · ' : ''}${n} ${plural(n, 'трек', 'трека', 'треков')}</div>
     </div>`;
   }
 
@@ -525,8 +536,8 @@
           ${head('Группы BM', isPremium() ? 'Собственные артисты BM. Все песни и тексты © BM' : 'Собственные артисты BM · слушать по бесплатной подписке', '<button class="btn ghost" data-go="bands">Все группы</button>')}
           <div class="grid">${bands.map(bandCard).join('')}</div>
         </div>
-        ${state.playlists.length ? `<div class="section">${head('Ваши плейлисты', '', '<button class="btn ghost" data-go="playlists">Все плейлисты</button>')}
-          <div class="grid">${state.playlists.slice(0, 6).map(playlistCard).join('')}</div></div>` : ''}
+        ${builtinPlaylists.length || state.playlists.length ? `<div class="section">${head('Плейлисты', '', '<button class="btn ghost" data-go="playlists">Все плейлисты</button>')}
+          <div class="grid">${[...builtinPlaylists, ...state.playlists].slice(0, 6).map(playlistCard).join('')}</div></div>` : ''}
         <div class="section">
           ${head('Песни от ИИ', 'С живым вокалом: созданы нейросетями Suno и Udio', '<button class="btn ghost" data-go="music" data-genre-go="ai">Все песни</button>')}
           ${grid(aiSongs)}
@@ -612,16 +623,19 @@
 
     playlists() {
       return `<h1>Плейлисты</h1>
-        <p class="muted">Собирайте любимую музыку и выпуски подкастов. Плейлисты хранятся в этом браузере.</p>
+        <p class="muted">Собирайте любимую музыку и выпуски подкастов. Ваши плейлисты хранятся в этом браузере.</p>
+        ${builtinPlaylists.length ? `<div class="section">${head('Плейлисты BM', '')}<div class="grid">${builtinPlaylists.map(playlistCard).join('')}</div></div>
+        <div class="section">${head('Ваши плейлисты', '')}` : ''}
         <div class="grid" style="margin-top:20px">
           <div class="card new-card" data-act="new-playlist"><div class="card-cover"><div class="cover dashed"><span class="cover-glyph">+</span></div></div><div class="card-title">Новый плейлист</div><div class="card-sub">Создать</div></div>
           ${state.playlists.map(playlistCard).join('')}
         </div>
-        ${state.playlists.length ? '' : '<div class="empty" style="margin-top:20px">Чтобы добавить трек в плейлист, нажмите на значок <b>≡+</b> рядом с треком или в плеере.</div>'}`;
+        ${state.playlists.length ? '' : '<div class="empty" style="margin-top:20px">Чтобы добавить трек в плейлист, нажмите на значок <b>≡+</b> рядом с треком или в плеере.</div>'}
+        ${builtinPlaylists.length ? '</div>' : ''}`;
     },
 
     playlist(id) {
-      const p = state.playlists.find(x => x.id === id);
+      const p = findPlaylist(id);
       if (!p) return notFound();
       const k = R(p.items);
       const total = p.items.reduce((s, it) => s + durationOf(it), 0);
@@ -629,17 +643,18 @@
         <div class="page-head">
           ${plCover(p, 'big')}
           <div>
-            <div class="hero-kicker">Плейлист</div>
+            <div class="hero-kicker">${p.builtin ? 'Плейлист BM' : 'Плейлист'}</div>
             <h1>${esc(p.name)}</h1>
+            ${p.desc ? `<p class="muted" style="margin:0 0 4px">${esc(p.desc)}</p>` : ''}
             <div class="muted">${p.items.length} ${plural(p.items.length, 'трек', 'трека', 'треков')}${total ? ' · ' + fmt(total) : ''}</div>
             <div class="actions" style="margin-top:14px">
               ${p.items.length ? `<button class="btn primary" data-play="${k}">${ICON.play} Слушать</button>` : ''}
-              <button class="btn" data-act="rename-pl">${ICON.edit} Переименовать</button>
-              <button class="btn ghost danger" data-act="delete-pl">${ICON.trash} Удалить</button>
+              ${p.builtin ? '' : `<button class="btn" data-act="rename-pl">${ICON.edit} Переименовать</button>
+              <button class="btn ghost danger" data-act="delete-pl">${ICON.trash} Удалить</button>`}
             </div>
           </div>
         </div>
-        ${p.items.length ? `<div class="list">${p.items.map((it, i) => row(it, k, i, { unlist: true })).join('')}</div>`
+        ${p.items.length ? `<div class="list">${p.items.map((it, i) => row(it, k, i, { unlist: !p.builtin })).join('')}</div>`
           : '<div class="empty">Плейлист пуст. Найдите музыку через поиск или в разделе «Музыка» и нажмите <b>≡+</b>.</div>'}`;
     },
 
@@ -729,7 +744,7 @@
 
   // ---------- Поиск ----------
   function hay(it) {
-    return norm([it.title, it.artist, it.genre, it.desc, it.lang, it.lyrics, it.license === 'ai' ? 'ии ai нейросеть suno udio вокал' : '', it.license === 'bm' ? 'bm бм группа' : ''].join(' '));
+    return norm([it.title, it.artist, it.poet, it.genre, it.desc, it.lang, it.lyrics, it.license === 'ai' ? 'ии ai нейросеть suno udio вокал' : '', it.license === 'bm' ? 'bm бм группа' : ''].join(' '));
   }
   function aliasesFor(t) {
     if (t.length < 3) return ALIAS[t] ? [ALIAS[t]] : [];
@@ -906,9 +921,11 @@
     lyricsItem = it;
     const b = bands.find(x => x.id === it.band);
     $('#ly-title').innerHTML = eBadge(it) + esc(it.title);
-    $('#ly-band').textContent = (b ? `${b.name} · ${b.genre}` : it.artist) + (it.instrumental ? ' · инструментальная версия' : '');
+    $('#ly-band').textContent = (b ? `${b.name} · ${b.genre}` : it.artist) + (it.poet ? ` · стихи: ${it.poet}` : '') + (it.source ? `, ${it.source}` : '') + (it.instrumental ? ' · инструментальная версия' : '');
     $('#ly-text').innerHTML = lyricsHTML(it.lyrics);
-    $('#ly-copy').textContent = `© ${b ? b.year : new Date().getFullYear()} BM. Текст песни принадлежит BM.`;
+    $('#ly-copy').textContent = it.kind === 'poem'
+      ? `Стихи — ${it.poet}. Музыка © BM.`
+      : `© ${b ? b.year : new Date().getFullYear()} BM. Текст песни принадлежит BM.`;
     $('#ly-play').hidden = isMissing(it);
     $('#lyrics-modal').hidden = false;
     $('#ly-text').scrollTop = 0;
