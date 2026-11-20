@@ -302,6 +302,7 @@ window.BM_BANDS = [
         id: '01-ne-spat',
         title: 'Не спать!',
         instrumental: true,
+        explicit: true, // «дурацкую смену», «сосед долбит стену»
         style: '172 bpm, explosive, count-in intro, crowd shouting chorus',
         lyrics: `[Intro]
 Раз, два, три, четыре!
