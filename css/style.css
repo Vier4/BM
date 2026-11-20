@@ -526,3 +526,23 @@ input[type=range]::-moz-range-thumb { width: 12px; height: 12px; border-radius: 
 .bos-btn[hidden] { display: none; }
 .bos-btn, .bos-link { white-space: nowrap; }
 .bos-actions { flex-wrap: wrap; row-gap: 10px; }
+
+/* Пометка E (Explicit) и запрет таких песен */
+.e-badge {
+  display: inline-grid; place-items: center; flex: none;
+  width: 16px; height: 16px; margin-right: 6px; vertical-align: 1px;
+  border-radius: 3px; background: var(--muted); color: var(--bg);
+  font: 800 10.5px/1 system-ui, sans-serif; letter-spacing: 0;
+}
+h1 .e-badge, h2 .e-badge, b .e-badge { width: 18px; height: 18px; font-size: 12px; vertical-align: 2px; }
+.row.is-blocked, .card.is-blocked { opacity: .4; }
+.switch-row { display: flex; gap: 16px; align-items: center; justify-content: space-between; }
+.switch {
+  flex: none; position: relative; width: 50px; height: 30px; padding: 0;
+  border: 0; border-radius: 15px; background: var(--surface-2); cursor: pointer;
+  box-shadow: inset 0 0 0 1px var(--line); transition: background .2s;
+}
+.switch i { position: absolute; top: 3px; left: 3px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; }
+.switch.on { background: var(--accent); box-shadow: none; }
+.switch.on i { transform: translateX(20px); }
+.switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

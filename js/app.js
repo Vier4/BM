@@ -122,7 +122,7 @@
     ...b,
     songs: b.songs.map(s => ({
       kind: 'band', id: `bm-${b.id}-${s.id}`, title: s.title, artist: b.name, band: b.id,
-      src: `music/bands/${b.id}/${s.id}.mp3`, lyrics: s.lyrics, instrumental: !!s.instrumental, license: 'bm', hue: b.hue, glyph: b.glyph, genre: 'Группы BM'
+      src: `music/bands/${b.id}/${s.id}.mp3`, lyrics: s.lyrics, instrumental: !!s.instrumental, explicit: !!s.explicit, license: 'bm', hue: b.hue, glyph: b.glyph, genre: 'Группы BM'
     }))
   }));
   const bandSongs = bands.flatMap(b => b.songs);
@@ -134,7 +134,7 @@
   const isPremiumContent = it => !!it && (it.kind === 'band' || it.license === 'nasa');
   const isLocked = it => isPremiumContent(it) && !isPremium();
   const aiSongs = (window.BM_AI_SONGS || []).map(t => ({
-    kind: 'stream', id: t.id, title: t.title, artist: t.artist, lang: t.lang, src: t.src, ogg: t.ogg || null,
+    kind: 'stream', id: t.id, title: t.title, artist: t.artist, lang: t.lang, src: t.src, ogg: t.ogg || null, explicit: !!t.explicit,
     duration: t.duration, page: t.page, license: 'ai', genre: 'Песни от ИИ', hue: t.hue, glyph: '🎤'
   }));
   const GENRES = [...new Set(catalog.map(t => t.genre))];
@@ -144,12 +144,16 @@
     route: 'home', param: null, query: '',
     queue: [], index: -1, source: null, item: null, playing: false,
     volume: store.get('bm-volume', 0.8),
+    noExplicit: store.get('bm-no-explicit', false), // запрет песен с пометкой E на этом устройстве
     userSongSaved: false,
     playlists: store.get('bm-playlists', []),
     durations: store.get('bm-durations', {}),
     genre: 'all', epLimit: 50
   };
 
+  // Пометка E (Explicit): в песне есть мат или грубые слова
+  const isBlocked = it => !!(it && it.explicit && state.noExplicit);
+  const eBadge = it => it && it.explicit ? '<span class="e-badge" title="Explicit: в песне есть грубые слова" aria-label="Explicit">E</span>' : '';
   const allMusic = () => [...(state.userSongSaved ? [L.userSong] : []), ...bandSongs, ...aiSongs, ...catalog];
   const allEpisodes = () => shows.flatMap(s => s.episodes);
   const glyph = it => it.glyph || (it.genre ? (GENRE_GLYPH[it.genre] || '♫') : '♪');
@@ -233,6 +237,7 @@
     const item = queue[index];
     if (!item) return;
     if (isLocked(item)) { openPaywall(item); return; }
+    if (isBlocked(item)) { toast('Песни с пометкой E запрещены. Разрешить их можно в аккаунте, в разделе «Ограничения».'); return; }
     if (!force && state.item && state.item.id === item.id && state.source) { toggle(); return; }
     const token = ++playToken;
     stopCurrent();
@@ -287,7 +292,7 @@
   function next(auto) {
     if (!state.queue.length) return;
     let i = state.index + 1;
-    while (i < state.queue.length && (isLocked(state.queue[i]) || notReady(state.queue[i]))) i++; // закрытое и невышедшее пропускаем
+    while (i < state.queue.length && (isLocked(state.queue[i]) || notReady(state.queue[i]) || isBlocked(state.queue[i]))) i++; // закрытое, невышедшее и запрещённое пропускаем
     if (i >= state.queue.length) {
       if (auto) { stopCurrent(); state.item = null; updatePlayerInfo(); return; }
       playFrom(state.queue, 0, true);
@@ -322,7 +327,7 @@
       cover.outerHTML = '<div class="cover sm" id="p-cover"><span class="cover-glyph">♪</span></div>';
       document.title = 'BM — музыка и подкасты';
     } else {
-      $('#p-title').textContent = it.title;
+      $('#p-title').innerHTML = eBadge(it) + esc(it.title);
       $('#p-artist').textContent = it.artist;
       cover.outerHTML = coverHTML(it, 'sm').replace('<div class="cover', '<div id="p-cover" class="cover');
       document.title = it.title + ' — BM';
@@ -414,9 +419,9 @@
 
   function card(it, k, i) {
     const lic = licenseOf(it);
-    return `<div class="card" data-id="${esc(it.id)}" data-list="${k}" data-i="${i}">
+    return `<div class="card${isBlocked(it) ? ' is-blocked' : ''}" data-id="${esc(it.id)}" data-list="${k}" data-i="${i}">
       <div class="card-cover">${coverHTML(it)}<button class="card-play" aria-label="Играть">${ICON.play}</button></div>
-      <div class="card-title" title="${esc(it.title)}">${esc(it.title)}</div>
+      <div class="card-title" title="${esc(it.title)}">${eBadge(it)}${esc(it.title)}</div>
       <div class="card-sub">${esc(it.artist)}</div>
       <span class="badge ${lic.cls}">${lic.label}</span>
     </div>`;
@@ -459,11 +464,11 @@
   function row(it, k, i, o = {}) {
     const lic = licenseOf(it);
     const sub = it.show ? `${it.artist}${it.date ? ' · ' + fmtDate(it.date) : ''}` : `${it.artist}${o.genre && it.genre ? ' · ' + it.genre : ''}`;
-    return `<div class="row" data-id="${esc(it.id)}" data-list="${k}" data-i="${i}">
+    return `<div class="row${isBlocked(it) ? ' is-blocked' : ''}" data-id="${esc(it.id)}" data-list="${k}" data-i="${i}">
       <span class="row-n"><span class="row-n-num">${i + 1}</span><span class="eq"><i></i><i></i><i></i></span></span>
       ${coverHTML(it, 'xs')}
       <div class="row-main">
-        <div class="row-title">${esc(it.title)}</div>
+        <div class="row-title">${eBadge(it)}${esc(it.title)}</div>
         <div class="row-sub">${esc(sub)}</div>
         ${o.desc && it.desc ? `<div class="row-desc">${esc(it.desc)}</div>` : ''}
       </div>
@@ -485,14 +490,14 @@
   function hero() {
     // Свой трек показываем, только когда его файл есть — иначе кнопка «Слушать» вела бы в никуда
     const own = state.userSongSaved;
-    const s = own ? L.userSong : aiSongs[0];
+    const s = own ? L.userSong : (aiSongs.find(x => !isBlocked(x)) || aiSongs[0]);
     if (!s) return '';
     const k = R([s]);
     return `<div class="hero">
       ${coverHTML(s)}
       <div>
         <div class="hero-kicker">${own ? 'Ваш трек' : 'Песня от ИИ'}</div>
-        <h1>${esc(s.title)}</h1>
+        <h1>${eBadge(s)}${esc(s.title)}</h1>
         <p>${own ? 'Ваша собственная песня.' : esc(s.artist || 'С живым вокалом от нейросети.')}</p>
         <div class="actions">
           <button class="btn primary" data-play="${k}">${ICON.play} Слушать</button>
@@ -682,11 +687,22 @@
       </div>`;
   };
 
+  const limitsSection = () => `<div class="section">${head('Ограничения', '')}
+      <div class="sub-card switch-row">
+        <div>
+          <div><b>Запретить песни с пометкой <span class="e-badge">E</span></b></div>
+          <div class="muted">E (Explicit) — в песне есть мат или грубые слова. Такие песни нельзя будет включить на этом устройстве, и при игре подряд они пропускаются.</div>
+        </div>
+        <button class="switch${state.noExplicit ? ' on' : ''}" role="switch" aria-checked="${state.noExplicit}" aria-label="Запретить песни с пометкой E" data-act="toggle-explicit"><i></i></button>
+      </div>
+    </div>`;
+
   pages.account = () => {
     const u = user();
     if (!u) return `<h1>Аккаунт</h1>
       <p class="muted">В BM входят через аккаунт BOS. Войдите, чтобы оформить бесплатную подписку.</p>
-      <div class="actions" style="margin-top:16px"><button class="btn primary" data-act="login">Войти через BOS</button><a class="btn" href="${BOS_URL}" target="_blank" rel="noopener">Открыть BOS</a></div>`;
+      <div class="actions" style="margin-top:16px"><button class="btn primary" data-act="login">Войти через BOS</button><a class="btn" href="${BOS_URL}" target="_blank" rel="noopener">Открыть BOS</a></div>
+      ${limitsSection()}`;
     const active = isPremium();
     return `<div class="account-head">
         <div class="avatar big">${esc(initials(u.name))}</div>
@@ -704,6 +720,7 @@
             <div class="actions" style="margin-top:12px"><button class="btn primary" data-act="subscribe">Оформить бесплатно</button></div>
           </div>`}
       </div>
+      ${limitsSection()}
       <div class="section actions"><button class="btn" data-act="logout">Выйти из BM</button><a class="btn ghost" href="${BOS_URL}" target="_blank" rel="noopener">Открыть BOS</a></div>
       <p class="test-note">Вход выполнен через аккаунт BOS. Имя берётся из BOS.</p>`;
   };
@@ -824,7 +841,7 @@
     if (pl) {
       // Начинаем с первой песни, которую можно включить, а не с той, что ещё не готова
       const q = reg[+pl.dataset.play] || [];
-      const first = q.findIndex(it => !notReady(it));
+      const first = q.findIndex(it => !notReady(it) && !isBlocked(it));
       playFrom(q, first < 0 ? 0 : first);
       return;
     }
@@ -840,6 +857,13 @@
       if (a === 'logout') logout();
       if (a === 'subscribe') subscribe();
       if (a === 'unsubscribe') unsubscribe();
+      if (a === 'toggle-explicit') {
+        state.noExplicit = !state.noExplicit;
+        store.set('bm-no-explicit', state.noExplicit);
+        if (isBlocked(state.item)) { stopCurrent(); state.item = null; updatePlayerInfo(); }
+        toast(state.noExplicit ? 'Песни с пометкой E запрещены на этом устройстве.' : 'Песни с пометкой E снова разрешены.');
+        render();
+      }
       if (a === 'rename-pl') renamePlaylist();
       if (a === 'delete-pl') deletePlaylist();
       if (a === 'more-eps') { state.epLimit += 50; const y = main.scrollTop; render(); main.scrollTop = y; }
@@ -881,7 +905,7 @@
     if (isLocked(it)) { openPaywall(it); return; }
     lyricsItem = it;
     const b = bands.find(x => x.id === it.band);
-    $('#ly-title').textContent = it.title;
+    $('#ly-title').innerHTML = eBadge(it) + esc(it.title);
     $('#ly-band').textContent = (b ? `${b.name} · ${b.genre}` : it.artist) + (it.instrumental ? ' · инструментальная версия' : '');
     $('#ly-text').innerHTML = lyricsHTML(it.lyrics);
     $('#ly-copy').textContent = `© ${b ? b.year : new Date().getFullYear()} BM. Текст песни принадлежит BM.`;
